@@ -158,6 +158,22 @@ class DBAS_Reservation_Manager {
             .dbas-price-table .total-row td { border-top: 2px solid #333; border-bottom: none; font-size: 1.2em; }
             #dbas-price-calculation { background: #f9f9f9; padding: 20px; border-radius: 5px; margin: 20px 0; }
             .description { display: block; color: #666; font-size: 0.9em; margin-top: 3px; }
+            .dbas-notice {
+                padding: 15px;
+                margin: 15px 0;
+                border-radius: 4px;
+                border-left: 4px solid;
+            }
+            .dbas-success {
+                background: #d4edda;
+                border-color: #28a745;
+                color: #155724;
+            }
+            .dbas-error {
+                background: #f8d7da;
+                border-color: #dc3545;
+                color: #721c24;
+            }
         </style>
         
         <script>
@@ -200,6 +216,13 @@ class DBAS_Reservation_Manager {
                     return;
                 }
                 
+                // Make sure dbas_ajax is defined
+                if (typeof dbas_ajax === 'undefined') {
+                    console.error('dbas_ajax is not defined');
+                    alert('Configuration error. Please refresh the page and try again.');
+                    return;
+                }
+                
                 $.ajax({
                     url: dbas_ajax.ajax_url,
                     type: 'POST',
@@ -222,13 +245,17 @@ class DBAS_Reservation_Manager {
                             $('#dbas-terms-agreement').slideDown();
                             $('#submit-reservation').show();
                         } else {
-                            alert(response.data.message);
+                            alert(response.data.message || 'An error occurred calculating the price');
                         }
+                    },
+                    error: function(xhr, status, error) {
+                        console.error('AJAX Error:', status, error);
+                        alert('Failed to calculate price. Please try again.');
                     }
                 });
             });
             
-            // Submit reservation
+            // Submit reservation - FIXED VERSION
             $('#dbas-reservation-form').on('submit', function(e) {
                 e.preventDefault();
                 
@@ -237,22 +264,50 @@ class DBAS_Reservation_Manager {
                     return;
                 }
                 
-                var formData = $(this).serialize();
+                // Check if dbas_ajax is defined
+                if (typeof dbas_ajax === 'undefined') {
+                    console.error('dbas_ajax is not defined');
+                    alert('Configuration error. Please refresh the page and try again.');
+                    return;
+                }
+                
+                // Manually build the form data to ensure arrays are handled correctly
+                var formData = new FormData(this);
+                formData.append('action', 'dbas_submit_reservation');
+                
+                // Debug: Log what we're sending
+                console.log('Submitting reservation...');
+                for (var pair of formData.entries()) {
+                    console.log(pair[0] + ': ' + pair[1]);
+                }
                 
                 $.ajax({
                     url: dbas_ajax.ajax_url,
                     type: 'POST',
-                    data: formData + '&action=dbas_submit_reservation',
+                    data: formData,
+                    processData: false,
+                    contentType: false,
                     success: function(response) {
+                        console.log('Response:', response);
                         if (response.success) {
                             $('#dbas-reservation-message').html('<div class="dbas-notice dbas-success">' + response.data.message + '</div>');
                             $('#dbas-reservation-form')[0].reset();
                             $('#dbas-price-calculation').hide();
                             $('#dbas-terms-agreement').hide();
                             $('#submit-reservation').hide();
+                            
+                            // Scroll to message
+                            $('html, body').animate({
+                                scrollTop: $('#dbas-reservation-message').offset().top - 100
+                            }, 500);
                         } else {
-                            $('#dbas-reservation-message').html('<div class="dbas-notice dbas-error">' + response.data.message + '</div>');
+                            $('#dbas-reservation-message').html('<div class="dbas-notice dbas-error">' + (response.data.message || 'An error occurred. Please try again.') + '</div>');
                         }
+                    },
+                    error: function(xhr, status, error) {
+                        console.error('AJAX Error:', status, error);
+                        console.error('Response:', xhr.responseText);
+                        $('#dbas-reservation-message').html('<div class="dbas-notice dbas-error">Failed to submit reservation. Please try again or contact support.</div>');
                     }
                 });
             });
@@ -301,8 +356,15 @@ class DBAS_Reservation_Manager {
         $checkin_date = sanitize_text_field($_POST['checkin_date']);
         $checkout_date = sanitize_text_field($_POST['checkout_date']);
         $pickup_time = sanitize_text_field($_POST['pickup_time']);
-        $dogs = array_map('intval', $_POST['dogs']);
-        $customer_notes = sanitize_textarea_field($_POST['customer_notes']);
+        
+        // Handle dogs array properly
+        $dogs = isset($_POST['dogs']) ? array_map('intval', (array)$_POST['dogs']) : array();
+        
+        if (empty($dogs)) {
+            wp_send_json_error(array('message' => __('Please select at least one dog', 'dbas')));
+        }
+        
+        $customer_notes = isset($_POST['customer_notes']) ? sanitize_textarea_field($_POST['customer_notes']) : '';
         
         // Validate dogs belong to user
         $dog_manager = new DBAS_Dog_Manager();
@@ -487,6 +549,7 @@ class DBAS_Reservation_Manager {
             
             <?php if (empty($reservations)): ?>
                 <p><?php _e('You have no reservations yet.', 'dbas'); ?></p>
+                <p><a href="<?php echo get_permalink(get_option('dbas_reservation_page_id')); ?>" class="button button-primary"><?php _e('Make a Reservation', 'dbas'); ?></a></p>
             <?php else: ?>
                 <table class="dbas-reservations-table">
                     <thead>
@@ -524,8 +587,90 @@ class DBAS_Reservation_Manager {
                 </table>
             <?php endif; ?>
         </div>
+        
+        <style>
+            .dbas-reservations-table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+            .dbas-reservations-table th,
+            .dbas-reservations-table td { padding: 10px; text-align: left; border-bottom: 1px solid #ddd; }
+            .dbas-reservations-table th { background: #f5f5f5; font-weight: 600; }
+            .dbas-status-pending { color: #ff9800; font-weight: 600; }
+            .dbas-status-approved { color: #4caf50; font-weight: 600; }
+            .dbas-status-rejected { color: #f44336; font-weight: 600; }
+            .dbas-status-cancelled { color: #9e9e9e; font-weight: 600; }
+        </style>
+        
+        <script>
+        jQuery(document).ready(function($) {
+            $('.dbas-cancel-reservation').on('click', function() {
+                if (!confirm('Are you sure you want to cancel this reservation?')) {
+                    return;
+                }
+                
+                var reservationId = $(this).data('reservation-id');
+                
+                $.ajax({
+                    url: dbas_ajax.ajax_url,
+                    type: 'POST',
+                    data: {
+                        action: 'dbas_cancel_reservation',
+                        reservation_id: reservationId,
+                        nonce: '<?php echo wp_create_nonce('dbas_cancel_reservation'); ?>'
+                    },
+                    success: function(response) {
+                        if (response.success) {
+                            location.reload();
+                        } else {
+                            alert(response.data.message || 'Failed to cancel reservation');
+                        }
+                    }
+                });
+            });
+        });
+        </script>
         <?php
         return ob_get_clean();
+    }
+    
+    /**
+     * AJAX: Cancel reservation
+     */
+    public function ajax_cancel_reservation() {
+        check_ajax_referer('dbas_cancel_reservation', 'nonce');
+        
+        if (!is_user_logged_in()) {
+            wp_send_json_error(array('message' => __('You must be logged in', 'dbas')));
+        }
+        
+        $reservation_id = intval($_POST['reservation_id']);
+        $user_id = get_current_user_id();
+        
+        // Get reservation
+        $reservation = $this->get_reservation($reservation_id);
+        
+        if (!$reservation) {
+            wp_send_json_error(array('message' => __('Reservation not found', 'dbas')));
+        }
+        
+        // Check ownership
+        if ($reservation->owner_id != $user_id && !current_user_can('manage_dbas')) {
+            wp_send_json_error(array('message' => __('You do not have permission to cancel this reservation', 'dbas')));
+        }
+        
+        // Update status
+        global $wpdb;
+        $table = $wpdb->prefix . 'dbas_reservations';
+        
+        $result = $wpdb->update(
+            $table,
+            array('status' => 'cancelled'),
+            array('id' => $reservation_id)
+        );
+        
+        if ($result !== false) {
+            wp_send_json_success(array('message' => __('Reservation cancelled successfully', 'dbas')));
+        } else {
+            wp_send_json_error(array('message' => __('Failed to cancel reservation', 'dbas')));
+        }
     }
 }
 ?>
