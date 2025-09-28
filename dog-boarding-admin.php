@@ -30,6 +30,12 @@ require_once DBAS_PLUGIN_DIR . 'includes/class-dbas-admin.php';
 require_once DBAS_PLUGIN_DIR . 'includes/class-dbas-emails.php';
 require_once DBAS_PLUGIN_DIR . 'includes/class-dbas-ajax.php';
 
+// NEW RESERVATION SYSTEM FILES
+require_once DBAS_PLUGIN_DIR . 'includes/class-dbas-reservations-database.php';
+require_once DBAS_PLUGIN_DIR . 'includes/class-dbas-reservation-manager.php';
+require_once DBAS_PLUGIN_DIR . 'includes/class-dbas-daycare-manager.php';
+require_once DBAS_PLUGIN_DIR . 'includes/class-dbas-reservations-admin.php';
+
 // Main plugin class
 class DBAS_Plugin {
     
@@ -47,13 +53,18 @@ class DBAS_Plugin {
     }
     
     private function init() {
-        // Initialize components
+        // Initialize existing components
         new DBAS_User_Fields();
         new DBAS_Dog_Manager();
         new DBAS_Frontend();
         new DBAS_Admin();
         new DBAS_Emails();
         new DBAS_Ajax();
+        
+        // Initialize NEW reservation system components
+        new DBAS_Reservation_Manager();
+        new DBAS_Daycare_Manager();
+        new DBAS_Reservations_Admin();
         
         // Add hooks
         add_action('init', array($this, 'load_textdomain'));
@@ -79,6 +90,12 @@ class DBAS_Plugin {
         wp_enqueue_style('dbas-admin', DBAS_PLUGIN_URL . 'assets/css/admin.css', array(), DBAS_VERSION);
         wp_enqueue_script('dbas-admin', DBAS_PLUGIN_URL . 'assets/js/admin.js', array('jquery'), DBAS_VERSION, true);
         wp_enqueue_media();
+        
+        // Localize script for admin AJAX
+        wp_localize_script('dbas-admin', 'dbas_admin_ajax', array(
+            'ajax_url' => admin_url('admin-ajax.php'),
+            'nonce' => wp_create_nonce('dbas_admin_ajax_nonce')
+        ));
     }
 }
 

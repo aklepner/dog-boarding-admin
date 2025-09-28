@@ -16,8 +16,13 @@ class DBAS_Activator {
         // Start output buffering to prevent activation warnings
         ob_start();
         
-        // Create database tables
+        // Create existing database tables
         self::create_tables();
+        
+        // CREATE NEW RESERVATION SYSTEM TABLES
+        if (class_exists('DBAS_Reservations_Database')) {
+            DBAS_Reservations_Database::create_tables();
+        }
         
         // Add capabilities
         self::add_capabilities();
@@ -352,6 +357,12 @@ class DBAS_Activator {
             $role->add_cap('approve_dogs');
             $role->add_cap('verify_vet_records');
             $role->add_cap('update_paperwork_status');
+            
+            // NEW CAPABILITIES FOR RESERVATION SYSTEM
+            $role->add_cap('manage_dbas_reservations');
+            $role->add_cap('manage_dbas_daycare');
+            $role->add_cap('approve_reservations');
+            $role->add_cap('manage_pricing');
         }
         
         // Create a custom role for dog boarding staff
@@ -366,7 +377,10 @@ class DBAS_Activator {
                 'approve_dogs' => true,
                 'verify_vet_records' => true,
                 'update_paperwork_status' => true,
-                'view_dbas_reports' => true
+                'view_dbas_reports' => true,
+                // NEW PERMISSIONS
+                'manage_dbas_daycare' => true,
+                'approve_reservations' => true
             )
         );
         
@@ -384,7 +398,12 @@ class DBAS_Activator {
                 'approve_dogs' => true,
                 'verify_vet_records' => true,
                 'update_paperwork_status' => true,
-                'view_dbas_reports' => true
+                'view_dbas_reports' => true,
+                // NEW PERMISSIONS
+                'manage_dbas_reservations' => true,
+                'manage_dbas_daycare' => true,
+                'approve_reservations' => true,
+                'manage_pricing' => true
             )
         );
     }
@@ -418,6 +437,17 @@ class DBAS_Activator {
                 'title' => 'My Profile',
                 'content' => '[dbas_user_profile]',
                 'option' => 'dbas_profile_page_id'
+            ),
+            // NEW PAGES FOR RESERVATION SYSTEM
+            'reservations' => array(
+                'title' => 'Make a Reservation',
+                'content' => '[dbas_reservation_form]',
+                'option' => 'dbas_reservation_page_id'
+            ),
+            'my_reservations' => array(
+                'title' => 'My Reservations',
+                'content' => '[dbas_my_reservations]',
+                'option' => 'dbas_my_reservations_page_id'
             )
         );
         
@@ -460,6 +490,17 @@ class DBAS_Activator {
         if (!wp_next_scheduled('dbas_weekly_report')) {
             wp_schedule_event(time(), 'weekly', 'dbas_weekly_report');
         }
+        
+        // NEW SCHEDULED EVENTS FOR RESERVATION SYSTEM
+        // Schedule daily reservation reminder emails
+        if (!wp_next_scheduled('dbas_daily_reservation_reminders')) {
+            wp_schedule_event(time(), 'daily', 'dbas_daily_reservation_reminders');
+        }
+        
+        // Schedule daily daycare report
+        if (!wp_next_scheduled('dbas_daily_daycare_report')) {
+            wp_schedule_event(time(), 'daily', 'dbas_daily_daycare_report');
+        }
     }
     
     /**
@@ -468,6 +509,8 @@ class DBAS_Activator {
     private static function unschedule_events() {
         wp_clear_scheduled_hook('dbas_daily_paperwork_check');
         wp_clear_scheduled_hook('dbas_weekly_report');
+        wp_clear_scheduled_hook('dbas_daily_reservation_reminders');
+        wp_clear_scheduled_hook('dbas_daily_daycare_report');
     }
     
     /**
@@ -496,14 +539,20 @@ class DBAS_Activator {
         $delete_data = get_option('dbas_delete_data_on_uninstall', false);
         
         if ($delete_data) {
-            // Drop all tables
+            // Drop all existing tables
             $tables = array(
                 'dbas_dogs',
                 'dbas_emergency_contacts',
                 'dbas_terms_acceptance',
                 'dbas_breeds',
                 'dbas_terms_content',
-                'dbas_activity_log'
+                'dbas_activity_log',
+                // NEW TABLES
+                'dbas_daycare_checkins',
+                'dbas_reservations',
+                'dbas_reservation_dogs',
+                'dbas_pricing',
+                'dbas_email_templates'
             );
             
             foreach ($tables as $table) {
@@ -520,6 +569,8 @@ class DBAS_Activator {
                 'dbas_login_page_id',
                 'dbas_terms_page_id',
                 'dbas_profile_page_id',
+                'dbas_reservation_page_id',
+                'dbas_my_reservations_page_id',
                 'dbas_admin_email',
                 'dbas_notify_user_registration',
                 'dbas_notify_dog_registration',
@@ -550,6 +601,10 @@ class DBAS_Activator {
                 $role->remove_cap('approve_dogs');
                 $role->remove_cap('verify_vet_records');
                 $role->remove_cap('update_paperwork_status');
+                $role->remove_cap('manage_dbas_reservations');
+                $role->remove_cap('manage_dbas_daycare');
+                $role->remove_cap('approve_reservations');
+                $role->remove_cap('manage_pricing');
             }
         }
     }
