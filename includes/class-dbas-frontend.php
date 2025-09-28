@@ -185,10 +185,16 @@ class DBAS_Frontend {
                     <?php 
                     global $wpdb;
                     $terms_table = $wpdb->prefix . 'dbas_terms_content';
-                    $terms = $wpdb->get_results("SELECT * FROM $terms_table WHERE is_active = 1 ORDER BY display_order");
+                    
+                    // Get VALID terms only (exclude empty or zero term_ids)
+                    $terms = $wpdb->get_results("SELECT * FROM $terms_table WHERE is_active = 1 AND term_id != '' AND term_id != '0' AND term_id IS NOT NULL ORDER BY display_order");
                     
                     if ($terms) {
                         foreach ($terms as $term) {
+                            // Skip if term_id is somehow still invalid
+                            if (empty($term->term_id) || $term->term_id == '0') {
+                                continue;
+                            }
                             ?>
                             <div class="dbas-term-item" style="margin-bottom: 15px;">
                                 <label>
@@ -433,6 +439,9 @@ class DBAS_Frontend {
             return;
         }
         
+        // Start output buffering to prevent header issues
+        ob_start();
+        
         $username = sanitize_user($_POST['username']);
         $email = sanitize_email($_POST['email']);
         $password = wp_generate_password();
@@ -460,20 +469,37 @@ class DBAS_Frontend {
             $terms_table = $wpdb->prefix . 'dbas_terms_content';
             $acceptance_table = $wpdb->prefix . 'dbas_terms_acceptance';
             
-            $terms = $wpdb->get_results("SELECT * FROM $terms_table WHERE is_active = 1");
+            // Suppress database errors temporarily
+            $wpdb->suppress_errors(true);
+            
+            // Get VALID terms only (exclude empty or zero term_ids)
+            $terms = $wpdb->get_results("SELECT * FROM $terms_table WHERE is_active = 1 AND term_id != '' AND term_id != '0' AND term_id IS NOT NULL");
             
             if ($terms) {
                 foreach ($terms as $term) {
+                    // Skip if term_id is invalid
+                    if (empty($term->term_id) || $term->term_id == '0') {
+                        continue;
+                    }
+                    
                     if (isset($_POST['terms_' . $term->term_id])) {
-                        // Save to terms acceptance table
-                        $wpdb->insert($acceptance_table, array(
-                            'user_id' => $user_id,
-                            'term_id' => $term->term_id,
-                            'term_version' => $term->term_version,
-                            'accepted' => 1,
-                            'accepted_date' => current_time('mysql'),
-                            'ip_address' => $_SERVER['REMOTE_ADDR']
+                        // Check if already exists to avoid duplicate entry
+                        $existing = $wpdb->get_var($wpdb->prepare(
+                            "SELECT id FROM $acceptance_table WHERE user_id = %d AND term_id = %s",
+                            $user_id, $term->term_id
                         ));
+                        
+                        if (!$existing) {
+                            // Save to terms acceptance table
+                            $wpdb->insert($acceptance_table, array(
+                                'user_id' => $user_id,
+                                'term_id' => $term->term_id,
+                                'term_version' => $term->term_version ?: '1.0',
+                                'accepted' => 1,
+                                'accepted_date' => current_time('mysql'),
+                                'ip_address' => $_SERVER['REMOTE_ADDR']
+                            ));
+                        }
                         
                         // Also save as user meta for backward compatibility
                         update_user_meta($user_id, 'dbas_term_' . $term->term_id, '1');
@@ -481,7 +507,7 @@ class DBAS_Frontend {
                     }
                 }
             } else {
-                // Fallback to old method if no terms in database
+                // Fallback to old method if no valid terms in database
                 $terms = array('liability', 'vaccination', 'behavior', 'payment', 'pickup');
                 foreach ($terms as $term) {
                     if (isset($_POST['terms_' . $term])) {
@@ -491,17 +517,26 @@ class DBAS_Frontend {
                 }
             }
             
+            // Re-enable database error reporting
+            $wpdb->suppress_errors(false);
+            
             // Send notification
             do_action('dbas_user_registered', $user_id);
             
             // Send password email
             wp_new_user_notification($user_id, null, 'both');
             
+            // Clear any output
+            ob_end_clean();
+            
             // Redirect with success message
             $register_url = add_query_arg('registration', 'success', get_permalink(get_option('dbas_register_page_id')));
             wp_redirect($register_url);
             exit;
         } else {
+            // Clear any output
+            ob_end_clean();
+            
             // Redirect with error message
             $register_url = add_query_arg('registration', 'failed', get_permalink(get_option('dbas_register_page_id')));
             wp_redirect($register_url);
@@ -521,6 +556,9 @@ class DBAS_Frontend {
         if (!is_user_logged_in()) {
             return;
         }
+        
+        // Start output buffering to prevent header issues
+        ob_start();
         
         $user_id = get_current_user_id();
         
@@ -569,6 +607,9 @@ class DBAS_Frontend {
         // Send notification
         do_action('dbas_user_updated', $user_id);
         
+        // Clear any output
+        ob_end_clean();
+        
         // Redirect with success message
         $portal_url = add_query_arg('profile', 'updated', get_permalink(get_option('dbas_portal_page_id')));
         wp_redirect($portal_url);
@@ -615,7 +656,9 @@ class DBAS_Frontend {
     public function render_terms_page() {
         global $wpdb;
         $terms_table = $wpdb->prefix . 'dbas_terms_content';
-        $terms = $wpdb->get_results("SELECT * FROM $terms_table WHERE is_active = 1 ORDER BY display_order");
+        
+        // Get VALID terms only
+        $terms = $wpdb->get_results("SELECT * FROM $terms_table WHERE is_active = 1 AND term_id != '' AND term_id != '0' AND term_id IS NOT NULL ORDER BY display_order");
         
         ob_start();
         ?>
