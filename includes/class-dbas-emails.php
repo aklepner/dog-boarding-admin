@@ -330,6 +330,7 @@ class DBAS_Emails {
     
     /**
      * Get email template for user registration (user)
+     * UPDATED: Clear explanation about password reset process
      */
     private function get_user_registration_user_message($user) {
         $portal_url = get_permalink(get_option('dbas_portal_page_id'));
@@ -337,14 +338,26 @@ class DBAS_Emails {
         $message = sprintf(
             __("Dear %s,\n\n" .
                "Welcome to %s Dog Boarding!\n\n" .
-               "Your account has been successfully created. You can now log in and register your dogs.\n\n" .
+               "Your account has been successfully created.\n\n" .
                "Your username: %s\n\n" .
-               "To get started:\n" .
-               "1. Log in to your portal: %s\n" .
-               "2. Complete your profile information\n" .
-               "3. Register your dog(s)\n" .
-               "4. Upload required documentation\n\n" .
+               "IMPORTANT: Password Setup\n" .
+               "=========================================\n" .
+               "For security reasons, you will receive a SEPARATE email from WordPress with a link to set your password.\n" .
+               "Please check your email for a message with the subject \"[%s] Login Details\" or \"Password Reset\".\n" .
+               "This email may take a few minutes to arrive and could be in your spam folder.\n\n" .
+               "Once you've set your password, you can log in here:\n%s\n\n" .
+               "Getting Started:\n" .
+               "1. Check your email and click the password reset link\n" .
+               "2. Create your secure password\n" .
+               "3. Log in to your portal\n" .
+               "4. Complete your profile information\n" .
+               "5. Register your dog(s)\n" .
+               "6. Upload required documentation (vaccination records, etc.)\n\n" .
                "Important: All dogs must have up-to-date vaccination records and pass our review process before boarding.\n\n" .
+               "If you don't receive the password setup email within 10 minutes:\n" .
+               "- Check your spam/junk folder\n" .
+               "- Try the \"Lost your password?\" link on the login page\n" .
+               "- Contact us for assistance\n\n" .
                "If you have any questions, please don't hesitate to contact us.\n\n" .
                "Thank you for choosing %s!\n\n" .
                "Best regards,\n" .
@@ -352,6 +365,7 @@ class DBAS_Emails {
             $user->first_name,
             get_bloginfo('name'),
             $user->user_login,
+            get_bloginfo('name'),
             $portal_url,
             get_bloginfo('name'),
             get_bloginfo('name')

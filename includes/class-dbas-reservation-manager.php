@@ -47,6 +47,21 @@ class DBAS_Reservation_Manager {
         <div class="dbas-reservation-form-container">
             <h2><?php _e('Make a Boarding Reservation', 'dbas'); ?></h2>
             
+            <?php 
+            // Check for reservation success message (not registration!)
+            if (isset($_GET['reservation']) && $_GET['reservation'] == 'success'): 
+            ?>
+                <div class="dbas-notice dbas-success">
+                    <?php _e('Your reservation request has been submitted successfully! You will receive an email confirmation and we will notify you once it has been approved.', 'dbas'); ?>
+                </div>
+            <?php endif; ?>
+            
+            <?php if (isset($_GET['reservation']) && $_GET['reservation'] == 'failed'): ?>
+                <div class="dbas-notice dbas-error">
+                    <?php _e('Failed to submit reservation. Please try again.', 'dbas'); ?>
+                </div>
+            <?php endif; ?>
+            
             <form id="dbas-reservation-form" class="dbas-form">
                 <?php wp_nonce_field('dbas_reservation', 'dbas_reservation_nonce'); ?>
                 
@@ -255,7 +270,7 @@ class DBAS_Reservation_Manager {
                 });
             });
             
-            // Submit reservation - FIXED VERSION
+            // Submit reservation
             $('#dbas-reservation-form').on('submit', function(e) {
                 e.preventDefault();
                 
@@ -290,16 +305,9 @@ class DBAS_Reservation_Manager {
                     success: function(response) {
                         console.log('Response:', response);
                         if (response.success) {
-                            $('#dbas-reservation-message').html('<div class="dbas-notice dbas-success">' + response.data.message + '</div>');
-                            $('#dbas-reservation-form')[0].reset();
-                            $('#dbas-price-calculation').hide();
-                            $('#dbas-terms-agreement').hide();
-                            $('#submit-reservation').hide();
-                            
-                            // Scroll to message
-                            $('html, body').animate({
-                                scrollTop: $('#dbas-reservation-message').offset().top - 100
-                            }, 500);
+                            // Instead of showing message in div, redirect with success parameter
+                            var currentUrl = window.location.href.split('?')[0];
+                            window.location.href = currentUrl + '?reservation=success';
                         } else {
                             $('#dbas-reservation-message').html('<div class="dbas-notice dbas-error">' + (response.data.message || 'An error occurred. Please try again.') + '</div>');
                         }
@@ -311,6 +319,15 @@ class DBAS_Reservation_Manager {
                     }
                 });
             });
+            
+            // Clear success message after showing it
+            if (window.location.search.includes('reservation=success')) {
+                setTimeout(function() {
+                    // Remove the query parameter from URL without refreshing
+                    var newUrl = window.location.href.split('?')[0];
+                    window.history.replaceState({}, document.title, newUrl);
+                }, 5000);
+            }
         });
         </script>
         <?php
@@ -427,7 +444,6 @@ class DBAS_Reservation_Manager {
     
     /**
      * Send reservation emails
-     * CHANGED FROM PRIVATE TO PUBLIC SO IT CAN BE CALLED FROM ADMIN CLASS
      */
     public function send_reservation_emails($reservation_id, $action = 'pending') {
         global $wpdb;
