@@ -9,10 +9,38 @@ class DBAS_Reservations_Admin {
         // Add admin menu items
         add_action('admin_menu', array($this, 'add_admin_menu'));
         
+        // Handle form submissions EARLY before any output
+        add_action('admin_init', array($this, 'handle_admin_actions'));
+        
         // Add AJAX handlers for search
         add_action('wp_ajax_dbas_search_owners', array($this, 'ajax_search_owners'));
         add_action('wp_ajax_dbas_get_owner_dogs', array($this, 'ajax_get_owner_dogs'));
         add_action('wp_ajax_dbas_get_overnight_dogs', array($this, 'ajax_get_overnight_dogs'));
+    }
+    
+    /**
+     * Handle admin actions before any output
+     */
+    public function handle_admin_actions() {
+        // Only process on our admin pages
+        if (!isset($_GET['page']) || strpos($_GET['page'], 'dbas-') !== 0) {
+            return;
+        }
+        
+        // Handle reservation update
+        if (isset($_POST['action']) && $_POST['action'] === 'update_reservation') {
+            $this->handle_reservation_update();
+        }
+        
+        // Handle pricing update
+        if (isset($_POST['update_pricing'])) {
+            $this->handle_pricing_update();
+        }
+        
+        // Handle email template update
+        if (isset($_POST['update_template'])) {
+            $this->handle_email_template_update();
+        }
     }
     
     /**
@@ -70,9 +98,10 @@ class DBAS_Reservations_Admin {
      * Render reservations page
      */
     public function render_reservations_page() {
-        // Handle actions
-        if (isset($_POST['action']) && $_POST['action'] === 'update_reservation') {
-            $this->handle_reservation_update();
+        // Check if we're viewing a single reservation
+        if (isset($_GET['action']) && $_GET['action'] === 'view' && isset($_GET['id'])) {
+            $this->render_single_reservation(intval($_GET['id']));
+            return;
         }
         
         // Get reservations
@@ -178,11 +207,6 @@ class DBAS_Reservations_Admin {
             .payment-partial { background: #ff9800; color: white; }
         </style>
         <?php
-        
-        // Show single reservation view if requested
-        if (isset($_GET['action']) && $_GET['action'] === 'view' && isset($_GET['id'])) {
-            $this->render_single_reservation(intval($_GET['id']));
-        }
     }
     
     /**
@@ -219,6 +243,12 @@ class DBAS_Reservations_Admin {
         ?>
         <div class="wrap">
             <h2><?php printf(__('Reservation #%d', 'dbas'), $reservation_id); ?></h2>
+            
+            <?php if (isset($_GET['message']) && $_GET['message'] === 'updated'): ?>
+                <div class="notice notice-success is-dismissible">
+                    <p><?php _e('Reservation updated successfully.', 'dbas'); ?></p>
+                </div>
+            <?php endif; ?>
             
             <div class="dbas-reservation-details">
                 <div class="reservation-box">
@@ -352,6 +382,10 @@ class DBAS_Reservations_Admin {
         
         // Get current reservation
         $current = $wpdb->get_row($wpdb->prepare("SELECT * FROM $table WHERE id = %d", $reservation_id));
+        if (!$current) {
+            wp_die(__('Reservation not found', 'dbas'));
+        }
+        
         $old_status = $current->status;
         $new_status = sanitize_text_field($_POST['status']);
         
@@ -388,10 +422,6 @@ class DBAS_Reservations_Admin {
      * Render pricing page
      */
     public function render_pricing_page() {
-        if (isset($_POST['update_pricing'])) {
-            $this->handle_pricing_update();
-        }
-        
         global $wpdb;
         $table = $wpdb->prefix . 'dbas_pricing';
         $prices = $wpdb->get_results("SELECT * FROM $table WHERE is_active = 1 ORDER BY service_type, dog_count");
@@ -488,10 +518,6 @@ class DBAS_Reservations_Admin {
      * Render email templates page
      */
     public function render_email_templates_page() {
-        if (isset($_POST['update_template'])) {
-            $this->handle_email_template_update();
-        }
-        
         global $wpdb;
         $table = $wpdb->prefix . 'dbas_email_templates';
         
@@ -685,6 +711,72 @@ class DBAS_Reservations_Admin {
     }
     
     /**
+     * Generate checkout report
+     */
+    private function generate_checkin_checkout_report($start_date, $end_date) {
+        // Implementation for check-in/check-out report
+        ?>
+        <h3><?php _e('Check-In/Check-Out Report', 'dbas'); ?></h3>
+        <p><?php _e('Report implementation coming soon.', 'dbas'); ?></p>
+        <?php
+    }
+    
+    /**
+     * Generate overnight report
+     */
+    private function generate_overnight_report($start_date, $end_date) {
+        // Implementation for overnight dogs report
+        ?>
+        <h3><?php _e('Overnight Dogs Report', 'dbas'); ?></h3>
+        <p><?php _e('Report implementation coming soon.', 'dbas'); ?></p>
+        <?php
+    }
+    
+    /**
+     * Generate revenue report
+     */
+    private function generate_revenue_report($start_date, $end_date) {
+        global $wpdb;
+        $daycare_table = $wpdb->prefix . 'dbas_daycare_checkins';
+        $reservations_table = $wpdb->prefix . 'dbas_reservations';
+        
+        // Daycare revenue
+        $daycare_revenue = $wpdb->get_var($wpdb->prepare(
+            "SELECT SUM(price) FROM $daycare_table WHERE checkin_date BETWEEN %s AND %s",
+            $start_date, $end_date
+        ));
+        
+        // Boarding revenue
+        $boarding_revenue = $wpdb->get_var($wpdb->prepare(
+            "SELECT SUM(total_price) FROM $reservations_table 
+             WHERE checkin_date <= %s AND checkout_date >= %s AND status = 'approved'",
+            $end_date, $start_date
+        ));
+        
+        ?>
+        <h3><?php _e('Revenue Report', 'dbas'); ?></h3>
+        <table class="wp-list-table widefat fixed striped">
+            <tr>
+                <th><?php _e('Revenue Type', 'dbas'); ?></th>
+                <th><?php _e('Amount', 'dbas'); ?></th>
+            </tr>
+            <tr>
+                <td><?php _e('Daycare Revenue', 'dbas'); ?></td>
+                <td>$<?php echo number_format($daycare_revenue ?: 0, 2); ?></td>
+            </tr>
+            <tr>
+                <td><?php _e('Boarding Revenue', 'dbas'); ?></td>
+                <td>$<?php echo number_format($boarding_revenue ?: 0, 2); ?></td>
+            </tr>
+            <tr>
+                <td><strong><?php _e('Total Revenue', 'dbas'); ?></strong></td>
+                <td><strong>$<?php echo number_format(($daycare_revenue ?: 0) + ($boarding_revenue ?: 0), 2); ?></strong></td>
+            </tr>
+        </table>
+        <?php
+    }
+    
+    /**
      * AJAX: Search owners
      */
     public function ajax_search_owners() {
@@ -788,50 +880,6 @@ class DBAS_Reservations_Admin {
         }
         
         wp_send_json_success($reservations);
-    }
-    
-    /**
-     * Generate revenue report
-     */
-    private function generate_revenue_report($start_date, $end_date) {
-        global $wpdb;
-        $daycare_table = $wpdb->prefix . 'dbas_daycare_checkins';
-        $reservations_table = $wpdb->prefix . 'dbas_reservations';
-        
-        // Daycare revenue
-        $daycare_revenue = $wpdb->get_var($wpdb->prepare(
-            "SELECT SUM(price) FROM $daycare_table WHERE checkin_date BETWEEN %s AND %s",
-            $start_date, $end_date
-        ));
-        
-        // Boarding revenue
-        $boarding_revenue = $wpdb->get_var($wpdb->prepare(
-            "SELECT SUM(total_price) FROM $reservations_table 
-             WHERE checkin_date <= %s AND checkout_date >= %s AND status = 'approved'",
-            $end_date, $start_date
-        ));
-        
-        ?>
-        <h3><?php _e('Revenue Report', 'dbas'); ?></h3>
-        <table class="wp-list-table widefat fixed striped">
-            <tr>
-                <th><?php _e('Revenue Type', 'dbas'); ?></th>
-                <th><?php _e('Amount', 'dbas'); ?></th>
-            </tr>
-            <tr>
-                <td><?php _e('Daycare Revenue', 'dbas'); ?></td>
-                <td>$<?php echo number_format($daycare_revenue ?: 0, 2); ?></td>
-            </tr>
-            <tr>
-                <td><?php _e('Boarding Revenue', 'dbas'); ?></td>
-                <td>$<?php echo number_format($boarding_revenue ?: 0, 2); ?></td>
-            </tr>
-            <tr>
-                <td><strong><?php _e('Total Revenue', 'dbas'); ?></strong></td>
-                <td><strong>$<?php echo number_format(($daycare_revenue ?: 0) + ($boarding_revenue ?: 0), 2); ?></strong></td>
-            </tr>
-        </table>
-        <?php
     }
 }
 ?>
