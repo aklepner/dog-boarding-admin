@@ -1,0 +1,625 @@
+/**
+ * Dog Boarding Administrative Software - Frontend Styles
+ */
+
+/* General Styles */
+.dbas-portal {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 20px;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen-Sans, Ubuntu, Cantarell, "Helvetica Neue", sans-serif;
+}
+
+.dbas-portal h2 {
+    color: #23282d;
+    font-size: 28px;
+    margin-bottom: 20px;
+    border-bottom: 2px solid #0073aa;
+    padding-bottom: 10px;
+}
+
+.dbas-portal h3 {
+    color: #23282d;
+    font-size: 22px;
+    margin: 20px 0 15px;
+}
+
+.dbas-portal h4 {
+    color: #555;
+    font-size: 18px;
+    margin: 15px 0 10px;
+}
+
+/* Welcome Section */
+.dbas-welcome {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 20px;
+    margin-bottom: 30px;
+    border-radius: 8px;
+    font-size: 18px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+/* Navigation Tabs */
+.dbas-nav-tabs {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: flex;
+    border-bottom: 2px solid #ddd;
+    background: #f5f5f5;
+    border-radius: 8px 8px 0 0;
+}
+
+.dbas-nav-tabs li {
+    margin: 0;
+}
+
+.dbas-nav-tabs a {
+    display: block;
+    padding: 15px 25px;
+    text-decoration: none;
+    color: #555;
+    font-weight: 500;
+    transition: all 0.3s ease;
+    border-bottom: 3px solid transparent;
+}
+
+.dbas-nav-tabs a:hover {
+    background: #fff;
+    color: #0073aa;
+}
+
+.dbas-nav-tabs a.active {
+    background: #fff;
+    color: #0073aa;
+    border-bottom-color: #0073aa;
+}
+
+/* Tab Content */
+.dbas-tab-content {
+    display: none;
+    padding: 30px;
+    background: #fff;
+    border: 1px solid #ddd;
+    border-top: none;
+    border-radius: 0 0 8px 8px;
+    animation: fadeIn 0.3s ease;
+}
+
+.dbas-tab-content.active {
+    display: block;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+/* Forms */
+.dbas-form,
+.dbas-registration-form,
+.dbas-login-form,
+.dbas-user-profile {
+    max-width: 600px;
+    margin: 0 auto;
+}
+
+.dbas-form-group {
+    margin-bottom: 20px;
+}
+
+.dbas-form-group label {
+    display: block;
+    margin-bottom: 5px;
+    font-weight: 600;
+    color: #333;
+}
+
+.dbas-form-group input[type="text"],
+.dbas-form-group input[type="email"],
+.dbas-form-group input[type="password"],
+.dbas-form-group input[type="date"],
+.dbas-form-group input[type="file"],
+.dbas-form-group select,
+.dbas-form-group textarea {
+    width: 100%;
+    padding: 10px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-size: 14px;
+    transition: border-color 0.3s ease;
+}
+
+.dbas-form-group input:focus,
+.dbas-form-group select:focus,
+.dbas-form-group textarea:focus {
+    outline: none;
+    border-color: #0073aa;
+    box-shadow: 0 0 0 2px rgba(0, 115, 170, 0.1);
+}
+
+.dbas-form-group input.error {
+    border-color: #dc3232;
+}
+
+.dbas-form-group input.success {
+    border-color: #46b450;
+}
+
+.dbas-field-error {
+    color: #dc3232;
+    font-size: 12px;
+    margin-top: 5px;
+    display: block;
+}
+
+.dbas-field-success {
+    color: #46b450;
+    font-size: 12px;
+    margin-top: 5px;
+    display: block;
+}
+
+/* Radio Buttons and Checkboxes */
+.dbas-radio-group {
+    display: flex;
+    gap: 20px;
+    padding: 5px 0;
+}
+
+.dbas-radio-group label {
+    display: flex;
+    align-items: center;
+    font-weight: normal;
+    margin-bottom: 0;
+    cursor: pointer;
+}
+
+.dbas-radio-group input[type="radio"],
+.dbas-form-group input[type="checkbox"] {
+    width: auto;
+    margin-right: 8px;
+}
+
+/* Buttons */
+.button,
+button.button {
+    background: #0073aa;
+    border: 1px solid #0073aa;
+    color: white;
+    padding: 10px 20px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 500;
+    transition: all 0.3s ease;
+    text-decoration: none;
+    display: inline-block;
+}
+
+.button:hover,
+button.button:hover {
+    background: #005a87;
+    border-color: #005a87;
+    transform: translateY(-1px);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.button-primary {
+    background: #0073aa;
+    border-color: #0073aa;
+}
+
+.button-primary:hover {
+    background: #005a87;
+    border-color: #005a87;
+}
+
+.button-small {
+    padding: 5px 12px;
+    font-size: 12px;
+}
+
+.dbas-form-submit {
+    margin-top: 25px;
+    padding-top: 20px;
+    border-top: 1px solid #eee;
+    display: flex;
+    gap: 10px;
+}
+
+/* Tables */
+.dbas-dogs-table,
+.wp-list-table {
+    width: 100%;
+    border-collapse: collapse;
+    background: white;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+.dbas-dogs-table th,
+.dbas-dogs-table td,
+.wp-list-table th,
+.wp-list-table td {
+    padding: 12px 15px;
+    text-align: left;
+    border-bottom: 1px solid #eee;
+}
+
+.dbas-dogs-table th,
+.wp-list-table th {
+    background: #f5f5f5;
+    font-weight: 600;
+    color: #333;
+}
+
+.dbas-dogs-table tr:hover,
+.wp-list-table tr:hover {
+    background: #f9f9f9;
+}
+
+.dbas-dogs-table tr:last-child td,
+.wp-list-table tr:last-child td {
+    border-bottom: none;
+}
+
+/* Status Indicators */
+.dbas-status-active {
+    color: #46b450;
+    font-weight: 600;
+}
+
+.dbas-status-inactive {
+    color: #ff9800;
+    font-weight: 600;
+}
+
+.dbas-status-pending {
+    color: #ff9800;
+    font-weight: 600;
+}
+
+/* Emergency Contacts */
+.dbas-emergency-contact-item {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 10px;
+    padding: 15px;
+    background: #f9f9f9;
+    border-radius: 4px;
+    align-items: center;
+}
+
+.dbas-emergency-contact-item input {
+    flex: 1;
+    margin-bottom: 0;
+}
+
+.dbas-emergency-contact-item button {
+    flex-shrink: 0;
+}
+
+#dbas-add-emergency-contact,
+#dbas-add-emergency-contact-frontend {
+    margin-top: 10px;
+}
+
+/* Modal */
+#dbas-edit-dog-modal {
+    display: none;
+    position: fixed;
+    z-index: 9999;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.5);
+    animation: fadeIn 0.3s ease;
+}
+
+.dbas-modal-content {
+    background: white;
+    margin: 50px auto;
+    padding: 30px;
+    width: 90%;
+    max-width: 600px;
+    max-height: 80vh;
+    overflow-y: auto;
+    border-radius: 8px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+    position: relative;
+    animation: slideIn 0.3s ease;
+}
+
+@keyframes slideIn {
+    from {
+        transform: translateY(-50px);
+        opacity: 0;
+    }
+    to {
+        transform: translateY(0);
+        opacity: 1;
+    }
+}
+
+.dbas-close {
+    position: absolute;
+    right: 20px;
+    top: 20px;
+    font-size: 28px;
+    font-weight: bold;
+    cursor: pointer;
+    color: #999;
+    transition: color 0.3s ease;
+}
+
+.dbas-close:hover {
+    color: #333;
+}
+
+body.dbas-modal-open {
+    overflow: hidden;
+}
+
+/* Notices and Messages */
+.dbas-notice {
+    padding: 15px 20px;
+    margin: 20px 0;
+    border-radius: 4px;
+    border-left: 4px solid;
+    animation: slideDown 0.3s ease;
+}
+
+@keyframes slideDown {
+    from {
+        transform: translateY(-20px);
+        opacity: 0;
+    }
+    to {
+        transform: translateY(0);
+        opacity: 1;
+    }
+}
+
+.dbas-success {
+    background: #d4edda;
+    border-color: #46b450;
+    color: #155724;
+}
+
+.dbas-error {
+    background: #f8d7da;
+    border-color: #dc3232;
+    color: #721c24;
+}
+
+.dbas-info {
+    background: #d1ecf1;
+    border-color: #0073aa;
+    color: #0c5460;
+}
+
+.dbas-warning {
+    background: #fff3cd;
+    border-color: #ff9800;
+    color: #856404;
+}
+
+/* Loading State */
+.dbas-loading {
+    opacity: 0.6;
+    pointer-events: none;
+}
+
+.dbas-loading::after {
+    content: "";
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 20px;
+    height: 20px;
+    margin: -10px 0 0 -10px;
+    border: 2px solid #0073aa;
+    border-radius: 50%;
+    border-top-color: transparent;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+/* File Upload Areas */
+.dbas-file-upload {
+    border: 2px dashed #ddd;
+    border-radius: 4px;
+    padding: 20px;
+    text-align: center;
+    transition: border-color 0.3s ease;
+}
+
+.dbas-file-upload:hover {
+    border-color: #0073aa;
+}
+
+.dbas-file-upload.dragover {
+    border-color: #0073aa;
+    background: #f0f8ff;
+}
+
+.file-preview {
+    margin-top: 15px;
+}
+
+.file-preview img {
+    max-width: 200px;
+    border-radius: 4px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+/* Add Dog Button */
+.dbas-add-dog-button {
+    margin-top: 20px;
+    text-align: center;
+}
+
+/* Photo Preview */
+.dbas-photo-preview,
+.dbas-current-photo {
+    margin-top: 15px;
+}
+
+.dbas-photo-preview img,
+.dbas-current-photo img {
+    max-width: 200px;
+    height: auto;
+    border-radius: 4px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .dbas-portal {
+        padding: 10px;
+    }
+    
+    .dbas-nav-tabs {
+        flex-direction: column;
+    }
+    
+    .dbas-nav-tabs a {
+        padding: 10px 15px;
+    }
+    
+    .dbas-tab-content {
+        padding: 15px;
+    }
+    
+    .dbas-emergency-contact-item {
+        flex-direction: column;
+    }
+    
+    .dbas-emergency-contact-item input,
+    .dbas-emergency-contact-item button {
+        width: 100%;
+    }
+    
+    .dbas-dogs-table {
+        font-size: 14px;
+    }
+    
+    .dbas-dogs-table th,
+    .dbas-dogs-table td {
+        padding: 8px;
+    }
+    
+    .dbas-modal-content {
+        width: 95%;
+        margin: 20px auto;
+        padding: 20px;
+    }
+}
+
+/* Print Styles */
+@media print {
+    .dbas-nav-tabs,
+    .button,
+    .dbas-add-dog-button,
+    .dbas-close {
+        display: none;
+    }
+    
+    .dbas-tab-content {
+        display: block !important;
+        border: none;
+        padding: 0;
+    }
+}
+
+/* Accessibility */
+.screen-reader-text {
+    position: absolute;
+    left: -10000px;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+}
+
+/* Focus Styles */
+a:focus,
+button:focus,
+input:focus,
+select:focus,
+textarea:focus {
+    outline: 2px solid #0073aa;
+    outline-offset: 2px;
+}
+
+/* Login Form Specific */
+#dbas_loginform {
+    max-width: 400px;
+    margin: 0 auto;
+    padding: 30px;
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+}
+
+#dbas_loginform p {
+    margin-bottom: 20px;
+}
+
+#dbas_loginform label {
+    display: block;
+    margin-bottom: 5px;
+    font-weight: 600;
+}
+
+#dbas_loginform input[type="text"],
+#dbas_loginform input[type="password"] {
+    width: 100%;
+    padding: 10px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+}
+
+.dbas-register-link {
+    text-align: center;
+    margin-top: 20px;
+}
+
+/* Admin Specific Styles */
+.dbas-dashboard-widgets {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 20px;
+    margin-top: 20px;
+}
+
+.dbas-widget {
+    background: white;
+    padding: 20px;
+    border: 1px solid #ccd0d4;
+    border-radius: 4px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+.dbas-widget h3 {
+    margin-top: 0;
+    padding-bottom: 10px;
+    border-bottom: 1px solid #eee;
+}
+
+.dbas-widget ul {
+    list-style: none;
+    padding: 0;
+    margin: 15px 0 0 0;
+}
+
+.dbas-widget ul li {
+    margin-bottom: 10px;
+}
