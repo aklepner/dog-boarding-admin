@@ -427,8 +427,9 @@ class DBAS_Reservation_Manager {
     
     /**
      * Send reservation emails
+     * CHANGED FROM PRIVATE TO PUBLIC SO IT CAN BE CALLED FROM ADMIN CLASS
      */
-    private function send_reservation_emails($reservation_id, $action = 'pending') {
+    public function send_reservation_emails($reservation_id, $action = 'pending') {
         global $wpdb;
         
         // Get reservation details
@@ -454,7 +455,6 @@ class DBAS_Reservation_Manager {
         }
         
         // Get email template
-        $template_key = '';
         if ($action === 'pending') {
             // Send to user
             $this->send_email_from_template('reservation_pending_user', $owner->user_email, $reservation, $owner, $dogs);
@@ -479,7 +479,10 @@ class DBAS_Reservation_Manager {
             $template_key
         ));
         
-        if (!$template) return;
+        if (!$template) {
+            error_log('DBAS: Email template not found: ' . $template_key);
+            return;
+        }
         
         // Build dog list
         $dog_list = '';
@@ -513,7 +516,12 @@ class DBAS_Reservation_Manager {
         $subject = str_replace(array_keys($variables), array_values($variables), $template->subject);
         $body = str_replace(array_keys($variables), array_values($variables), $template->body);
         
-        wp_mail($to, $subject, $body);
+        // Send the email
+        $result = wp_mail($to, $subject, $body);
+        
+        if (!$result) {
+            error_log('DBAS: Failed to send email to ' . $to . ' with template ' . $template_key);
+        }
     }
     
     /**
