@@ -651,6 +651,54 @@ class DBAS_Frontend {
     }
     
     /**
+     * Send password setup email to new user
+     */
+    private function send_password_setup_email($user, $reset_key) {
+        $site_name = get_bloginfo('name');
+        $login_url = wp_login_url();
+        
+        // Build the password reset URL
+        $reset_url = network_site_url("wp-login.php?action=rp&key=$reset_key&login=" . rawurlencode($user->user_login), 'login');
+        
+        $subject = sprintf('[%s] Set Your Password', $site_name);
+        
+        $message = sprintf(
+            "Hello %s,\n\n" .
+            "Welcome to %s!\n\n" .
+            "Your username is: %s\n\n" .
+            "To set your password, please click the link below:\n\n" .
+            "%s\n\n" .
+            "This password reset link will expire in 24 hours.\n\n" .
+            "If you have any problems, please contact us.\n\n" .
+            "After setting your password, you can log in at:\n%s\n\n" .
+            "Thank you,\n" .
+            "The %s Team",
+            $user->first_name ?: $user->user_login,
+            $site_name,
+            $user->user_login,
+            $reset_url,
+            $login_url,
+            $site_name
+        );
+        
+        $headers = array('Content-Type: text/plain; charset=UTF-8');
+        $admin_email = get_option('admin_email');
+        if ($admin_email) {
+            $headers[] = 'From: ' . $site_name . ' <' . $admin_email . '>';
+        }
+        
+        // Send the email
+        $sent = wp_mail($user->user_email, $subject, $message, $headers);
+        
+        // Log if email failed
+        if (!$sent) {
+            error_log('DBAS: Failed to send password setup email to ' . $user->user_email);
+        }
+        
+        return $sent;
+    }
+    
+    /**
      * Render terms and conditions page
      */
     public function render_terms_page() {
