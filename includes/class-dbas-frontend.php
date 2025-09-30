@@ -1,6 +1,7 @@
 <?php
 /**
  * Frontend Management Class
+ * Fixed version with proper email handling and email-as-username
  */
 
 class DBAS_Frontend {
@@ -76,6 +77,7 @@ class DBAS_Frontend {
             .dbas-form-group label { display: block; margin-bottom: 5px; font-weight: bold; }
             .dbas-form-group input[type="text"],
             .dbas-form-group input[type="email"],
+            .dbas-form-group input[type="password"],
             .dbas-form-group input[type="date"],
             .dbas-form-group select,
             .dbas-form-group textarea { width: 100%; padding: 8px; border: 1px solid #ddd; }
@@ -87,6 +89,11 @@ class DBAS_Frontend {
             .dbas-status-inactive { color: orange; }
             .dbas-emergency-contact-item { margin-bottom: 10px; padding: 10px; background: #f9f9f9; }
             .dbas-emergency-contact-item input { margin-right: 10px; }
+            .password-strength { margin-top: 5px; font-size: 12px; }
+            .password-strength.weak { color: #dc3545; }
+            .password-strength.medium { color: #ffc107; }
+            .password-strength.strong { color: #28a745; }
+            .dbas-password-requirements { font-size: 12px; color: #666; margin-top: 5px; }
         </style>
         
         <script>
@@ -120,13 +127,16 @@ class DBAS_Frontend {
             
             <?php if (isset($_GET['registration']) && $_GET['registration'] == 'success'): ?>
                 <div class="dbas-notice dbas-success">
-                    <?php _e('Registration successful! Please check your email for your password.', 'dbas'); ?>
+                    <?php _e('Registration successful! Please check your email for confirmation. You can now log in with your email and password.', 'dbas'); ?>
                 </div>
             <?php endif; ?>
             
             <?php if (isset($_GET['registration']) && $_GET['registration'] == 'failed'): ?>
                 <div class="dbas-notice dbas-error">
-                    <?php _e('Registration failed. Please try again.', 'dbas'); ?>
+                    <?php 
+                    $error = isset($_GET['error']) ? urldecode($_GET['error']) : __('Registration failed. Please try again.', 'dbas');
+                    echo esc_html($error);
+                    ?>
                 </div>
             <?php endif; ?>
             
@@ -135,13 +145,24 @@ class DBAS_Frontend {
                 <input type="hidden" name="dbas_action" value="register" />
                 
                 <div class="dbas-form-group">
-                    <label for="username"><?php _e('Username', 'dbas'); ?> *</label>
-                    <input type="text" name="username" id="username" required />
+                    <label for="email"><?php _e('Email Address', 'dbas'); ?> *</label>
+                    <input type="email" name="email" id="email" required />
+                    <span class="description"><?php _e('This will be your username for logging in', 'dbas'); ?></span>
                 </div>
                 
                 <div class="dbas-form-group">
-                    <label for="email"><?php _e('Email Address', 'dbas'); ?> *</label>
-                    <input type="email" name="email" id="email" required />
+                    <label for="password"><?php _e('Password', 'dbas'); ?> *</label>
+                    <input type="password" name="password" id="password" required minlength="8" />
+                    <div class="dbas-password-requirements">
+                        <?php _e('Password must be at least 8 characters long', 'dbas'); ?>
+                    </div>
+                    <div id="password-strength" class="password-strength"></div>
+                </div>
+                
+                <div class="dbas-form-group">
+                    <label for="password_confirm"><?php _e('Confirm Password', 'dbas'); ?> *</label>
+                    <input type="password" name="password_confirm" id="password_confirm" required />
+                    <div id="password-match" style="margin-top: 5px;"></div>
                 </div>
                 
                 <div class="dbas-form-group">
@@ -186,12 +207,10 @@ class DBAS_Frontend {
                     global $wpdb;
                     $terms_table = $wpdb->prefix . 'dbas_terms_content';
                     
-                    // Get VALID terms only (exclude empty or zero term_ids)
                     $terms = $wpdb->get_results("SELECT * FROM $terms_table WHERE is_active = 1 AND term_id != '' AND term_id != '0' AND term_id IS NOT NULL ORDER BY display_order");
                     
                     if ($terms) {
                         foreach ($terms as $term) {
-                            // Skip if term_id is somehow still invalid
                             if (empty($term->term_id) || $term->term_id == '0') {
                                 continue;
                             }
@@ -214,27 +233,10 @@ class DBAS_Frontend {
                             <?php
                         }
                     } else {
-                        // Fallback to default terms if none in database
                         ?>
                         <label>
-                            <input type="checkbox" name="terms_liability" value="1" required />
-                            <?php _e('I accept the liability waiver', 'dbas'); ?> *
-                        </label><br>
-                        <label>
-                            <input type="checkbox" name="terms_vaccination" value="1" required />
-                            <?php _e('I confirm all vaccination records will be up to date', 'dbas'); ?> *
-                        </label><br>
-                        <label>
-                            <input type="checkbox" name="terms_behavior" value="1" required />
-                            <?php _e('I agree to the behavioral policy', 'dbas'); ?> *
-                        </label><br>
-                        <label>
-                            <input type="checkbox" name="terms_payment" value="1" required />
-                            <?php _e('I accept the payment terms and conditions', 'dbas'); ?> *
-                        </label><br>
-                        <label>
-                            <input type="checkbox" name="terms_pickup" value="1" required />
-                            <?php _e('I agree to the pickup and drop-off policies', 'dbas'); ?> *
+                            <input type="checkbox" name="terms_all" value="1" required />
+                            <?php _e('I accept all terms and conditions', 'dbas'); ?> *
                         </label>
                         <?php
                     }
@@ -247,7 +249,74 @@ class DBAS_Frontend {
                     </button>
                 </div>
             </form>
+            
+            <p class="dbas-login-link" style="margin-top: 20px;">
+                <?php 
+                $login_url = get_permalink(get_option('dbas_login_page_id'));
+                printf(__('Already registered? <a href="%s">Login here</a>', 'dbas'), $login_url);
+                ?>
+            </p>
         </div>
+        
+        <script>
+        jQuery(document).ready(function($) {
+            // Password strength checker
+            $('#password').on('keyup', function() {
+                var password = $(this).val();
+                var strength = 0;
+                var feedback = $('#password-strength');
+                
+                if (password.length >= 8) strength++;
+                if (password.match(/[a-z]+/)) strength++;
+                if (password.match(/[A-Z]+/)) strength++;
+                if (password.match(/[0-9]+/)) strength++;
+                if (password.match(/[$@#&!]+/)) strength++;
+                
+                feedback.removeClass('weak medium strong');
+                
+                if (strength < 2) {
+                    feedback.addClass('weak').text('Weak password');
+                } else if (strength < 4) {
+                    feedback.addClass('medium').text('Medium strength');
+                } else {
+                    feedback.addClass('strong').text('Strong password');
+                }
+            });
+            
+            // Password match checker
+            $('#password_confirm').on('keyup', function() {
+                var password = $('#password').val();
+                var confirm = $(this).val();
+                var feedback = $('#password-match');
+                
+                if (confirm === '') {
+                    feedback.text('');
+                } else if (password === confirm) {
+                    feedback.html('<span style="color: green;">Passwords match</span>');
+                } else {
+                    feedback.html('<span style="color: red;">Passwords do not match</span>');
+                }
+            });
+            
+            // Form validation
+            $('form').on('submit', function(e) {
+                var password = $('#password').val();
+                var confirm = $('#password_confirm').val();
+                
+                if (password !== confirm) {
+                    e.preventDefault();
+                    alert('Passwords do not match!');
+                    return false;
+                }
+                
+                if (password.length < 8) {
+                    e.preventDefault();
+                    alert('Password must be at least 8 characters long!');
+                    return false;
+                }
+            });
+        });
+        </script>
         <?php
         return ob_get_clean();
     }
@@ -268,7 +337,7 @@ class DBAS_Frontend {
                 'echo' => true,
                 'redirect' => get_permalink(get_option('dbas_portal_page_id')),
                 'form_id' => 'dbas_loginform',
-                'label_username' => __('Username', 'dbas'),
+                'label_username' => __('Email Address', 'dbas'),
                 'label_password' => __('Password', 'dbas'),
                 'label_remember' => __('Remember Me', 'dbas'),
                 'label_log_in' => __('Log In', 'dbas'),
@@ -439,19 +508,46 @@ class DBAS_Frontend {
             return;
         }
         
-        // Start output buffering to prevent header issues
         ob_start();
         
-        $username = sanitize_user($_POST['username']);
         $email = sanitize_email($_POST['email']);
-        $password = wp_generate_password();
+        $password = $_POST['password']; // Don't sanitize password
+        $password_confirm = $_POST['password_confirm'];
         
+        // Validate passwords match
+        if ($password !== $password_confirm) {
+            ob_end_clean();
+            $register_url = add_query_arg(array(
+                'registration' => 'failed',
+                'error' => urlencode('Passwords do not match')
+            ), get_permalink(get_option('dbas_register_page_id')));
+            wp_redirect($register_url);
+            exit;
+        }
+        
+        // Use email as username
+        $username = $email;
+        
+        // Check if email/username already exists
+        if (email_exists($email) || username_exists($username)) {
+            ob_end_clean();
+            $register_url = add_query_arg(array(
+                'registration' => 'failed',
+                'error' => urlencode('This email address is already registered')
+            ), get_permalink(get_option('dbas_register_page_id')));
+            wp_redirect($register_url);
+            exit;
+        }
+        
+        // Create user
         $userdata = array(
             'user_login' => $username,
             'user_email' => $email,
             'user_pass' => $password,
             'first_name' => sanitize_text_field($_POST['first_name']),
-            'last_name' => sanitize_text_field($_POST['last_name'])
+            'last_name' => sanitize_text_field($_POST['last_name']),
+            'display_name' => sanitize_text_field($_POST['first_name']) . ' ' . sanitize_text_field($_POST['last_name']),
+            'role' => 'subscriber'
         );
         
         $user_id = wp_insert_user($userdata);
@@ -469,28 +565,22 @@ class DBAS_Frontend {
             $terms_table = $wpdb->prefix . 'dbas_terms_content';
             $acceptance_table = $wpdb->prefix . 'dbas_terms_acceptance';
             
-            // Suppress database errors temporarily
             $wpdb->suppress_errors(true);
-            
-            // Get VALID terms only (exclude empty or zero term_ids)
             $terms = $wpdb->get_results("SELECT * FROM $terms_table WHERE is_active = 1 AND term_id != '' AND term_id != '0' AND term_id IS NOT NULL");
             
             if ($terms) {
                 foreach ($terms as $term) {
-                    // Skip if term_id is invalid
                     if (empty($term->term_id) || $term->term_id == '0') {
                         continue;
                     }
                     
                     if (isset($_POST['terms_' . $term->term_id])) {
-                        // Check if already exists to avoid duplicate entry
                         $existing = $wpdb->get_var($wpdb->prepare(
                             "SELECT id FROM $acceptance_table WHERE user_id = %d AND term_id = %s",
                             $user_id, $term->term_id
                         ));
                         
                         if (!$existing) {
-                            // Save to terms acceptance table
                             $wpdb->insert($acceptance_table, array(
                                 'user_id' => $user_id,
                                 'term_id' => $term->term_id,
@@ -501,44 +591,34 @@ class DBAS_Frontend {
                             ));
                         }
                         
-                        // Also save as user meta for backward compatibility
                         update_user_meta($user_id, 'dbas_term_' . $term->term_id, '1');
                         update_user_meta($user_id, 'dbas_term_' . $term->term_id . '_date', current_time('mysql'));
                     }
                 }
-            } else {
-                // Fallback to old method if no valid terms in database
-                $terms = array('liability', 'vaccination', 'behavior', 'payment', 'pickup');
-                foreach ($terms as $term) {
-                    if (isset($_POST['terms_' . $term])) {
-                        update_user_meta($user_id, 'dbas_term_' . $term, '1');
-                        update_user_meta($user_id, 'dbas_term_' . $term . '_date', current_time('mysql'));
-                    }
-                }
             }
             
-            // Re-enable database error reporting
             $wpdb->suppress_errors(false);
             
-            // Send notification
-            do_action('dbas_user_registered', $user_id);
-            
-            // Send password email
+            // CRITICAL: Send WordPress default email notifications
+            // This ensures both admin and user get proper WordPress emails
             wp_new_user_notification($user_id, null, 'both');
             
-            // Clear any output
+            // Send our custom notification AFTER WordPress emails
+            do_action('dbas_user_registered', $user_id);
+            
             ob_end_clean();
             
-            // Redirect with success message
             $register_url = add_query_arg('registration', 'success', get_permalink(get_option('dbas_register_page_id')));
             wp_redirect($register_url);
             exit;
         } else {
-            // Clear any output
             ob_end_clean();
             
-            // Redirect with error message
-            $register_url = add_query_arg('registration', 'failed', get_permalink(get_option('dbas_register_page_id')));
+            $error_message = $user_id->get_error_message();
+            $register_url = add_query_arg(array(
+                'registration' => 'failed',
+                'error' => urlencode($error_message)
+            ), get_permalink(get_option('dbas_register_page_id')));
             wp_redirect($register_url);
             exit;
         }
@@ -557,7 +637,6 @@ class DBAS_Frontend {
             return;
         }
         
-        // Start output buffering to prevent header issues
         ob_start();
         
         $user_id = get_current_user_id();
@@ -607,10 +686,8 @@ class DBAS_Frontend {
         // Send notification
         do_action('dbas_user_updated', $user_id);
         
-        // Clear any output
         ob_end_clean();
         
-        // Redirect with success message
         $portal_url = add_query_arg('profile', 'updated', get_permalink(get_option('dbas_portal_page_id')));
         wp_redirect($portal_url);
         exit;
@@ -650,62 +727,10 @@ class DBAS_Frontend {
         }
     }
     
-    /**
-     * Send password setup email to new user
-     */
-    private function send_password_setup_email($user, $reset_key) {
-        $site_name = get_bloginfo('name');
-        $login_url = wp_login_url();
-        
-        // Build the password reset URL
-        $reset_url = network_site_url("wp-login.php?action=rp&key=$reset_key&login=" . rawurlencode($user->user_login), 'login');
-        
-        $subject = sprintf('[%s] Set Your Password', $site_name);
-        
-        $message = sprintf(
-            "Hello %s,\n\n" .
-            "Welcome to %s!\n\n" .
-            "Your username is: %s\n\n" .
-            "To set your password, please click the link below:\n\n" .
-            "%s\n\n" .
-            "This password reset link will expire in 24 hours.\n\n" .
-            "If you have any problems, please contact us.\n\n" .
-            "After setting your password, you can log in at:\n%s\n\n" .
-            "Thank you,\n" .
-            "The %s Team",
-            $user->first_name ?: $user->user_login,
-            $site_name,
-            $user->user_login,
-            $reset_url,
-            $login_url,
-            $site_name
-        );
-        
-        $headers = array('Content-Type: text/plain; charset=UTF-8');
-        $admin_email = get_option('admin_email');
-        if ($admin_email) {
-            $headers[] = 'From: ' . $site_name . ' <' . $admin_email . '>';
-        }
-        
-        // Send the email
-        $sent = wp_mail($user->user_email, $subject, $message, $headers);
-        
-        // Log if email failed
-        if (!$sent) {
-            error_log('DBAS: Failed to send password setup email to ' . $user->user_email);
-        }
-        
-        return $sent;
-    }
-    
-    /**
-     * Render terms and conditions page
-     */
     public function render_terms_page() {
         global $wpdb;
         $terms_table = $wpdb->prefix . 'dbas_terms_content';
         
-        // Get VALID terms only
         $terms = $wpdb->get_results("SELECT * FROM $terms_table WHERE is_active = 1 AND term_id != '' AND term_id != '0' AND term_id IS NOT NULL ORDER BY display_order");
         
         ob_start();
@@ -751,11 +776,6 @@ class DBAS_Frontend {
                                 </tr>
                             <?php endforeach; ?>
                         </table>
-                        <p>
-                            <a href="<?php echo get_permalink(get_option('dbas_portal_page_id')); ?>" class="button">
-                                <?php _e('Update Your Acceptance in Profile', 'dbas'); ?>
-                            </a>
-                        </p>
                     </div>
                 <?php endif; ?>
             <?php else: ?>
